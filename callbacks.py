@@ -29,6 +29,7 @@ class PrintCallback:
             print(message_head + message_loss)
 
             if self.plot:
-                plt.plot(self.loss_history)
-                plt.plot(self.ma_history)
+                plt.plot(self.loss_history, label='loss')
+                plt.plot(self.ma_history, label='MA 100')
+                plt.legend()
                 plt.show()
