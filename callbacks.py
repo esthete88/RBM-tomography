@@ -3,6 +3,17 @@ import matplotlib.pyplot as plt
 
 
 class PrintCallback:
+    """Simple callback that prints current loss and plots loss history with moving average.
+
+    Parameters
+    ----------
+    freq : int
+        How often output is displayed.
+    plot : bool
+        If `True`, plots loss history.
+    gamma : float
+        Moving average parameter.
+    """
     def __init__(self, freq=100, plot=False, gamma=0.99):
         self.loss_history = []
         self.ma_history = []
