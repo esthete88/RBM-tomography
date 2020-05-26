@@ -9,12 +9,14 @@ from rbm import RBM
 
 
 class Tomograph(nn.Module):
-    def __init__(self, vis_size, hid_size, n_samples=1, n_gibbs_steps=1, init_sigma=1, dtype=torch.float32, eps=1e-8):
+    def __init__(self, vis_size, hid_size, gibbs=True, n_samples=1, n_gibbs_steps=1,
+                 init_sigma=1, dtype=torch.float32, eps=1e-8):
         super().__init__()
 
         self.vis_size = vis_size
         self.hid_size = hid_size
 
+        self.gibbs = gibbs
         self.n_gibbs_steps = n_gibbs_steps
         self.n_samples = n_samples
 
@@ -25,17 +27,21 @@ class Tomograph(nn.Module):
         self._eps = eps
 
     def forward(self, vis):
-        sampled_vis = self.amplitude_rbm.sample(vis, n_gibbs_steps=self.n_gibbs_steps)
+        if self.gibbs:
+            vis = self.amplitude_rbm.sample(vis, n_gibbs_steps=self.n_gibbs_steps)
+        else:
+            fock_indices = torch.arange(2 ** self.vis_size)
+            vis = idx2vis(fock_indices, self.vis_size)
 
-        amplitude_prob = self.amplitude_rbm.prob(sampled_vis)
+        amplitude_prob = self.amplitude_rbm.prob(vis)
         amplitude = torch.sqrt(amplitude_prob / amplitude_prob.sum())
 
-        phase_prob = self.phase_rbm.prob(sampled_vis)
+        phase_prob = self.phase_rbm.prob(vis)
         phase = torch.log(phase_prob + self._eps) / 2
 
         predicted_state = amplitude, phase
 
-        return predicted_state, sampled_vis
+        return predicted_state, vis
 
     def predict(self):
         fock_indices = torch.arange(2 ** self.vis_size)
@@ -56,10 +62,10 @@ class Tomograph(nn.Module):
         predicted_amplitude, predicted_phase = predicted_state  # [n_indices,]
 
         amplitudes = data_amplitudes * predicted_amplitude
-        phases = data_phases - predicted_amplitude
+        phases = data_phases - predicted_phase
 
-        likelihood = torch.sum(amplitudes * torch.cos(phases), dim=0) ** 2 \
-                   + torch.sum(amplitudes * torch.sin(phases), dim=0) ** 2
+        likelihood = torch.sum(amplitudes * torch.cos(phases), dim=1) ** 2 \
+                   + torch.sum(amplitudes * torch.sin(phases), dim=1) ** 2
 
         return -torch.mean(torch.log(likelihood + self._eps))
 
