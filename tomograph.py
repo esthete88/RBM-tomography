@@ -105,8 +105,6 @@ class Tomograph(nn.Module):
             predicted_state, vis = self.forward(vis)
             sampled_indices = vis2idx(vis)
 
-            print(sampled_indices)
-
             data_amplitudes = encoded_data[0][:, sampled_indices]
             data_phases = encoded_data[1][:, sampled_indices]
             data_states = data_amplitudes, data_phases
