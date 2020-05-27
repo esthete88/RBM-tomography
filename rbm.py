@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from torch.distributions import Bernoulli
 
 
@@ -26,30 +27,35 @@ class RBM(nn.Module):
         self._W = nn.Parameter(init_sigma * torch.randn(vis_size, hid_size, dtype=dtype))
         self._bv = nn.Parameter(init_sigma * torch.randn(vis_size, dtype=dtype))
         self._bh = nn.Parameter(init_sigma * torch.randn(hid_size, dtype=dtype))
+        
+#         self._bv = nn.Parameter(torch.zeros(vis_size, dtype=dtype))
+#         self._bh = nn.Parameter(torch.zeros(hid_size, dtype=dtype))
 
         self.dtype = dtype
 
-    def forward_pass(self, vis):
+    def forward_pass(self, vis, temperature=1):
         """Computes samples of hidden neurons."""
         hid_logits = vis @ self._W + self._bh
-        bernoulli = Bernoulli(logits=hid_logits)
+        hid_probs = F.sigmoid(hid_logits / temperature)
+        bernoulli = Bernoulli(hid_probs)
         hid = bernoulli.sample()
         return hid
 
-    def backward_pass(self, hid):
+    def backward_pass(self, hid, temperature=1):
         """Computes samples of visible neurons."""
         vis_logits = hid @ self._W.T + self._bv
-        bernoulli = Bernoulli(logits=vis_logits)
+        vis_probs = F.sigmoid(vis_logits / temperature)
+        bernoulli = Bernoulli(vis_probs)
         vis = bernoulli.sample()
         return vis
 
-    def sample(self, vis, n_gibbs_steps=1):
+    def sample(self, vis, n_gibbs_steps=1, temperature=1):
         """Samples from RBM using Gibbs sampling with `n_gibbs_steps` iterations and
         `vis` as a starting point for Markov chain."""
         vis = vis.to(dtype=self.dtype)
         for _ in range(n_gibbs_steps):
-            hid = self.forward_pass(vis)
-            vis = self.backward_pass(hid)
+            hid = self.forward_pass(vis, temperature)
+            vis = self.backward_pass(hid, temperature)
         return vis
 
     def prob(self, vis):
