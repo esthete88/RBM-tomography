@@ -24,7 +24,7 @@ class Tomograph(nn.Module):
     n_gibbs_steps : int
         Number of steps in each Gibbs chain.
     init_sigma : float
-        Description of parameter `init_sigma`.
+        Standard deviation for initialization of RBM parameters.
 
     Attributes
     ----------
@@ -66,6 +66,7 @@ class Tomograph(nn.Module):
         return rbm_probs, vis
 
     def predict(self):
+        """Returns tuple of amplitudes and phases of the reconstructed state in Fock basis."""
         fock_indices = torch.arange(2 ** self.vis_size)
         vis = idx2vis(fock_indices, self.vis_size)
 
@@ -78,6 +79,7 @@ class Tomograph(nn.Module):
         return amplitude, phase
 
     def llh_loss(self, encoded_data, rbm_probs):
+        """Computes negative log-likelihood of reconstruction."""
         data_amplitudes, data_phases = encoded_data  # [batch_size, n_indices]
         amplitude_prob, phase_prob = rbm_probs  # [n_indices,]
 
@@ -100,6 +102,7 @@ class Tomograph(nn.Module):
         return -llh
 
     def fit(self, x, theta, n_epochs=1000, lr=1e-1, callbacks=None):
+        """Fits RBM to the data."""
         device = next(self.parameters()).device
 
         fock_indices = torch.arange(2 ** self.vis_size)
@@ -161,6 +164,7 @@ def encode_data(fock_indices, x, theta, dtype=torch.float32, device=torch.device
 
 
 def idx2vis(idx, dim, dtype=torch.float32, device=torch.device('cpu')):
+    """Encodes Fock vectors."""
     vis = torch.zeros(idx.shape[0], dim, dtype=dtype, device=device)
     for i in range(idx.shape[0]):
         id_bin = torch.as_tensor([int(c) for c in bin(idx[i])[2:]], dtype=dtype, device=device)
@@ -169,6 +173,7 @@ def idx2vis(idx, dim, dtype=torch.float32, device=torch.device('cpu')):
 
 
 def vis2idx(vis):
+    """Turns encodings of Fock vectors to corresponding indices."""
     return torch.sum(2 ** reversed(torch.arange(0, vis.shape[1])) * vis, dim=1, dtype=torch.long)
 
 
