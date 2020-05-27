@@ -21,7 +21,7 @@ class PrintCallback:
         self.plot = plot
         self.gamma = gamma
 
-    def __call__(self, epoch_log):
+    def __call__(self, model, epoch_log):
         epoch = epoch_log['epoch']
         n_epochs = epoch_log['n_epochs']
         loss = epoch_log['loss']
@@ -44,3 +44,29 @@ class PrintCallback:
                 plt.plot(self.ma_history, label='MA 100')
                 plt.legend()
                 plt.show()
+
+
+class GibbsStepsIncreaseCallback:
+    def __init__(self, freq=1000, stop_epoch=5000):
+        self.freq = freq
+        self.stop_epoch = stop_epoch
+        
+    def __call__(self, model, epoch_log):
+        epoch = epoch_log['epoch']
+        if (epoch + 1) % self.freq == 0 and epoch < self.stop_epoch:
+            model.n_gibbs_steps += 1
+
+
+class TemperatureDecayCallback:
+    def __init__(self, freq=1, decrease_per_epoch=1e-2):
+        self.freq = freq
+        self.decrease_per_epoch = decrease_per_epoch
+        
+    def __call__(self, model, epoch_log):
+        epoch = epoch_log['epoch']
+        
+        if (epoch + 1) % self.freq == 0:
+            model.temperature -= self.decrease_per_epoch
+            
+        if model.temperature <= 1:
+            model.temperature = 1
