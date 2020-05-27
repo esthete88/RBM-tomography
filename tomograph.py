@@ -114,7 +114,7 @@ class Tomograph(nn.Module):
             if self.gibbs:
                 vis = idx2vis(fock_indices[torch.randint(len(fock_indices), (self.n_samples,))], self.vis_size, 
                               dtype=self.dtype, device=device)
-                vis = self.amplitude_rbm.sample(vis, n_gibbs_steps=self.n_gibbs_steps, temperature=1)
+                vis = self.amplitude_rbm.sample(vis, n_gibbs_steps=self.n_gibbs_steps, temperature=self.temperature)
                 unique_vis = torch.unique(vis, dim=0)
                 
                 sampled_indices = vis2idx(unique_vis)
