@@ -47,6 +47,8 @@ class PrintCallback:
 
 
 class GibbsStepsIncreaseCallback:
+    """Callback for updating number of steps in Gibbs sampling.
+       Increases `n_gibbs_steps` linearly each `freq` epoch ending at `stop_epoch`."""
     def __init__(self, freq=1000, stop_epoch=5000):
         self.freq = freq
         self.stop_epoch = stop_epoch
@@ -58,15 +60,14 @@ class GibbsStepsIncreaseCallback:
 
 
 class TemperatureDecayCallback:
-    def __init__(self, freq=1, decrease_per_epoch=1e-2):
+    """Callback for updating temperature of sampling.
+       Decreases temperature linearly each `freq` epoch ending at `stop_epoch`."""
+    def __init__(self, freq=1, stop_epoch=1e-2):
         self.freq = freq
-        self.decrease_per_epoch = decrease_per_epoch
+        self.stop_epoch = stop_epoch
         
     def __call__(self, model, epoch_log):
         epoch = epoch_log['epoch']
         
-        if (epoch + 1) % self.freq == 0:
-            model.temperature -= self.decrease_per_epoch
-            
-        if model.temperature <= 1:
-            model.temperature = 1
+        if (epoch + 1) % self.freq == 0 and epoch < self.stop_epoch:
+            model.temperature -= (model.temperature - 1) / (self.stop_epoch - epoch)
