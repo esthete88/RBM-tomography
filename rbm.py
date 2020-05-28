@@ -1,6 +1,5 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
 from torch.distributions import Bernoulli
 
 
@@ -36,7 +35,7 @@ class RBM(nn.Module):
     def forward_pass(self, vis, temperature=1):
         """Computes samples of hidden neurons."""
         hid_logits = vis @ self._W + self._bh
-        hid_probs = F.sigmoid(hid_logits / temperature)
+        hid_probs = torch.sigmoid(hid_logits / temperature)
         bernoulli = Bernoulli(hid_probs)
         hid = bernoulli.sample()
         return hid
@@ -44,7 +43,7 @@ class RBM(nn.Module):
     def backward_pass(self, hid, temperature=1):
         """Computes samples of visible neurons."""
         vis_logits = hid @ self._W.T + self._bv
-        vis_probs = F.sigmoid(vis_logits / temperature)
+        vis_probs = torch.sigmoid(vis_logits / temperature)
         bernoulli = Bernoulli(vis_probs)
         vis = bernoulli.sample()
         return vis
