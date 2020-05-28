@@ -48,6 +48,8 @@ class Tomograph(nn.Module):
 
         self.amplitude_rbm = RBM(vis_size, hid_size, init_sigma=init_sigma, dtype=dtype)
         self.phase_rbm = RBM(vis_size, hid_size, init_sigma=init_sigma, dtype=dtype)
+        
+        self.temperature = 1
 
         self.dtype = dtype
         self._eps = eps
@@ -92,7 +94,7 @@ class Tomograph(nn.Module):
 
         return -llh
 
-    def fit(self, x, theta, n_epochs=1000, lr=1e-1, temperature=1, callbacks=None):
+    def fit(self, x, theta, n_epochs=1000, lr=1e-1, callbacks=None):
         """Fits RBM to the data."""
         device = next(self.parameters()).device
 
@@ -108,33 +110,31 @@ class Tomograph(nn.Module):
         opt = torch.optim.Adam(self.parameters(), lr=lr, betas=(0.9, 0.99))
         scheduler = torch.optim.lr_scheduler.MultiStepLR(opt, [1000, 3000])
         
-        self.temperature = temperature
-        
-        for e in range(n_epochs):
+        for e in range(n_epochs): 
+            
+            epoch_log = {
+                'epoch': e,
+                'n_epochs': n_epochs,
+            }
+            
             if self.gibbs:
                 vis = idx2vis(fock_indices[torch.randint(len(fock_indices), (self.n_samples,))], self.vis_size, 
                               dtype=self.dtype, device=device)
                 vis = self.amplitude_rbm.sample(vis, n_gibbs_steps=self.n_gibbs_steps, temperature=self.temperature)
                 unique_vis = torch.unique(vis, dim=0)
-                
                 sampled_indices = vis2idx(unique_vis)
-                print(sampled_indices)
+                epoch_log['sampled_indices'] = sampled_indices
                 encoded_data = encode_data(sampled_indices, x, theta, self.dtype, device)
                 
             predicted_state = self.forward(unique_vis)
             loss = self.llh_loss(encoded_data, predicted_state)
+            epoch_log['loss'] = loss.cpu().detach().numpy()
 
             opt.zero_grad()
             loss.backward()
             opt.step()
             scheduler.step()
-
-            epoch_log = {
-                'epoch': e,
-                'n_epochs': n_epochs,
-                'loss': loss.cpu().detach().numpy(),
-            }
-
+            
             if callbacks is not None:
                 for callback in callbacks:
                     callback(self, epoch_log)
