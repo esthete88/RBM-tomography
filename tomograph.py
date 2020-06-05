@@ -35,8 +35,8 @@ class Tomograph(nn.Module):
 
     """
 
-    def __init__(self, vis_size, hid_size, gibbs=True, n_samples=2, n_gibbs_steps=1,
-                 init_sigma=1, dtype=torch.float32, eps=1e-10):
+    def __init__(self, vis_size, hid_size, gibbs=True, n_samples=5, n_gibbs_steps=1,
+                 init_sigma=1, dtype=torch.float64, eps=1e-10):
         super().__init__()
 
         self.vis_size = vis_size
@@ -64,20 +64,27 @@ class Tomograph(nn.Module):
         predicted_state = amplitude, phase
 
         return predicted_state
+    
+    def predict(self, n_samples=10):
+        """Returns tuple of amplitudes and phases of the reconstructed state in sampled Fock basis."""
+        if not self.gibbs:
+            return self.predict_true()
+        
+        device = next(self.parameters()).device
+        fock_indices = torch.arange(2 ** self.vis_size)
+        vis = idx2vis(fock_indices[torch.randint(len(fock_indices), (n_samples,))], self.vis_size, 
+                      dtype=self.dtype, device=device)
+        unique_vis = torch.unique(vis, dim=0)
+        
+        return self.forward(unique_vis)
 
-    def predict(self):
+    def predict_true(self):
         """Returns tuple of amplitudes and phases of the reconstructed state in Fock basis."""
         device = next(self.parameters()).device
         fock_indices = torch.arange(2 ** self.vis_size)
         vis = idx2vis(fock_indices, self.vis_size, dtype=self.dtype, device=device)
 
-        amplitude_prob = self.amplitude_rbm.prob(vis)
-        amplitude = (torch.sqrt(amplitude_prob / amplitude_prob.sum()))
-
-        phase_prob = self.phase_rbm.prob(vis)
-        phase = torch.log(phase_prob + self._eps) / 2
-
-        return amplitude, phase
+        return self.forward(vis)
 
     def llh_loss(self, data_states, predicted_state):
         """Computes negative log-likelihood of reconstruction."""

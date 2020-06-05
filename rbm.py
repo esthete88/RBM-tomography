@@ -17,7 +17,7 @@ class RBM(nn.Module):
 
     """
 
-    def __init__(self, vis_size, hid_size, init_sigma=1, dtype=torch.float32):
+    def __init__(self, vis_size, hid_size, init_sigma=1, dtype=torch.float64):
         super().__init__()
 
         self.vis_size = vis_size
